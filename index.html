@@ -98,6 +98,10 @@ select.in{padding-right:6px}
 .timer{font-family:var(--font-display);font-weight:600;font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
 .ex-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
 .ex-head .h3{overflow-wrap:anywhere}
+.ex-head{align-items:center}
+.ex-head .h3{flex:1 1 120px;min-width:0}
+.ex-head .seg{flex-shrink:0}
+.ex-head .segb{min-width:40px}
 .target{color:var(--muted);font-size:14px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .sethead,.setrow{display:grid;grid-template-columns:32px minmax(0,1fr) 70px 58px 44px;gap:6px;align-items:center}
 .sethead{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:center}
@@ -200,10 +204,6 @@ button.sn.d{background:var(--accent-soft);color:var(--accent)}
     <h1>Bitácora de gym</h1>
     <div class="date-col">
       <div class="date" id="today"></div>
-      <div class="seg" role="group" aria-label="Unidad de peso">
-        <button class="segb" data-act="unit" data-u="kg" aria-pressed="true">kg</button>
-        <button class="segb" data-act="unit" data-u="lb" aria-pressed="false">lb</button>
-      </div>
     </div>
   </header>
   <div id="banner"></div>
@@ -318,6 +318,7 @@ const LIB = [
 ['Elevación de piernas colgado','Core','Barra fija',['Cuélgate de la barra con los brazos estirados.','Sube las piernas hasta la altura de la cadera o más, sin balancearte.','Baja despacio.'],'Si es muy difícil, empieza doblando las rodillas.'],
 ['Rueda abdominal','Core','Rueda',['De rodillas, sujeta la rueda con las dos manos bajo los hombros.','Rueda hacia delante hasta estirar el cuerpo, con el abdomen apretado.','Regresa contrayendo el abdomen.'],'Rueda solo hasta donde puedas mantener la espalda baja firme.'],
 ['Caminata en cinta','Cardio','Máquina',['Sube a la cinta con la velocidad baja y empieza a caminar con la espalda recta y la mirada al frente.','Sube la velocidad poco a poco hasta un ritmo en el que puedas hablar sin ahogarte. Si quieres más esfuerzo, sube la inclinación.','Suelta las manos de las barras cuando te sientas estable y baja la velocidad los últimos minutos antes de parar.'],'Anota los minutos y, si quieres, la velocidad o la inclinación en la casilla de nivel.'],
+['Bicicleta estacionaria','Cardio','Máquina',['Ajusta el asiento para que la rodilla quede casi estirada cuando el pedal está abajo, y el manillar a una altura cómoda.','Empieza pedaleando suave unos minutos con resistencia baja y la espalda recta, sin encorvar los hombros.','Sube la resistencia o el ritmo de forma gradual y baja de nuevo los últimos minutos para recuperarte.'],'Anota los minutos y el nivel de resistencia. Si las rodillas se doblan mucho abajo, el asiento está muy bajo.'],
 ['Escaladora (escaleras en máquina)','Cardio','Máquina',['Sube a los pedales y elige un nivel bajo para los primeros minutos.','Pisa con todo el pie y mantén el torso erguido, sin apoyar el peso en las barras.','Sube el nivel de forma gradual y baja el ritmo los últimos minutos para recuperarte.'],'Anota los minutos y el nivel de la máquina. Si te apoyas mucho en las barras, el trabajo baja bastante.'],
 ['Plancha lateral','Core','Peso corporal',['Acuéstate de lado apoyando el antebrazo bajo el hombro.','Sube la cadera hasta alinear el cuerpo.','Mantén el tiempo y cambia de lado.'],'Mantén la cadera arriba, sin que se hunda.'],
 ['Giros rusos','Core','Mancuerna o balón',['Siéntate con las rodillas dobladas y el torso inclinado un poco hacia atrás.','Gira el torso llevando el peso de un lado al otro.','Mantén la espalda recta durante todo el movimiento.'],'Puedes dejar los pies apoyados para hacerlo más fácil.'],
@@ -352,7 +353,7 @@ const PROGRAMS = [
 const ICON_CHECK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 
 /* ---------- Estado ---------- */
-const S = { loaded: false, tab: 'train', routines: [], months: {}, goals: {}, unit: 'kg', active: null, restSecs: 90, rest: null, ui: { confirm: '', open: {}, plBar: '20', plTotal: '', libQ: '', libG: '', libE: '', quickE: '', libOpen: {}, howOpen: {} } };
+const S = { loaded: false, tab: 'train', routines: [], months: {}, goals: {}, units: {}, unit: 'kg', active: null, restSecs: 90, rest: null, ui: { confirm: '', open: {}, plBar: '20', plTotal: '', libQ: '', libG: '', libE: '', quickE: '', libOpen: {}, howOpen: {} } };
 let store = null, DL = null, pendingRender = false;
 /* Fuera de Claude no existe window.claude: los datos van a localStorage y las descargas al navegador. */
 const STANDALONE = !(window.claude && window.claude.use);
@@ -368,18 +369,18 @@ const CLIENT = uid();
 const dirty = new Set(), timers = {}, sent = {}, chain = {};
 
 function docBody(id) {
-  if (id === 'routines') return { list: S.routines, rest: S.restSecs, unit: S.unit };
+  if (id === 'routines') return { list: S.routines, rest: S.restSecs, unit: S.unit, units: S.units };
   if (id === 'active') return { session: S.active };
   if (id === 'goals') return { map: S.goals };
   if (id.indexOf('m_') === 0) return { sessions: S.months[id.slice(2)] || [] };
   return {};
 }
-function localSave() { try { localStorage.setItem(LS_KEY, JSON.stringify({ routines: S.routines, rest: S.restSecs, months: S.months, active: S.active, goals: S.goals, unit: S.unit })); } catch (e) {} }
+function localSave() { try { localStorage.setItem(LS_KEY, JSON.stringify({ routines: S.routines, rest: S.restSecs, months: S.months, active: S.active, goals: S.goals, unit: S.unit, units: S.units })); } catch (e) {} }
 function localLoad() {
   try {
     const raw = localStorage.getItem(LS_KEY); if (!raw) return;
     const d = JSON.parse(raw);
-    S.routines = d.routines || []; S.restSecs = d.rest || 90; S.months = d.months || {}; S.active = d.active || null; S.goals = d.goals || {}; S.unit = d.unit === 'lb' ? 'lb' : 'kg';
+    S.routines = d.routines || []; S.restSecs = d.rest || 90; S.months = d.months || {}; S.active = d.active || null; S.goals = d.goals || {}; S.unit = d.unit === 'lb' ? 'lb' : 'kg'; S.units = d.units && typeof d.units === 'object' ? d.units : {};
   } catch (e) {}
 }
 const inflight = {}, lastW = {};
@@ -411,7 +412,7 @@ function applySnapshot(snap) {
     const c = canon(data);
     if (dirty.has(id) || recentlyWritten(id)) return;
     if (c === canon(docBody(id))) return;
-    if (id === 'routines') { S.routines = data.list || []; S.restSecs = data.rest || 90; S.unit = data.unit === 'lb' ? 'lb' : 'kg'; changed = true; }
+    if (id === 'routines') { S.routines = data.list || []; S.restSecs = data.rest || 90; S.unit = data.unit === 'lb' ? 'lb' : 'kg'; S.units = data.units || {}; changed = true; }
     else if (id === 'active') { S.active = data.session || null; changed = true; }
     else if (id === 'goals') { S.goals = data.map || {}; changed = true; }
     else if (id.indexOf('m_') === 0) { S.months[id.slice(2)] = data.sessions || []; changed = true; }
@@ -494,10 +495,16 @@ function viewTrain() {
 const TYPE_NAME = { n: 'normal', w: 'calentamiento', d: 'dropset' };
 /* Unidades: todo se guarda en kg; la unidad elegida solo cambia lo que se escribe y se ve. */
 const LB = 2.2046226218;
-const toDisp = kg => S.unit === 'lb' ? kg * LB : kg;
-const fromDisp = v => S.unit === 'lb' ? v / LB : v;
-const wN = kg => { const v = toDisp(kg); return fmtN(S.unit === 'lb' ? Math.round(v * 10) / 10 : v); };
-const U = () => S.unit === 'lb' ? 'lb' : 'kg';
+let CTX = null;
+const cu = () => CTX === 'lb' ? 'lb' : 'kg';
+const unitOf = name => (S.units && S.units[key(name)]) || (S.unit === 'lb' ? 'lb' : 'kg');
+const inCtx = (u, fn) => { const p = CTX; CTX = u; try { return fn(); } finally { CTX = p; } };
+const inUnit = (name, fn) => inCtx(unitOf(name), fn);
+const plU = () => S.ui.plU || (S.unit === 'lb' ? 'lb' : 'kg');
+const toDisp = kg => cu() === 'lb' ? kg * LB : kg;
+const fromDisp = v => cu() === 'lb' ? v / LB : v;
+const wN = kg => { const v = toDisp(kg); return fmtN(cu() === 'lb' ? Math.round(v * 10) / 10 : v); };
+const U = () => cu();
 const dispInput = str => { const v = num(str); return v == null ? '' : wN(v); };
 const EQUIP = ['Mancuernas', 'Barra', 'Polea', 'Máquina', 'Peso corporal'];
 function equipCats(x) {
@@ -511,7 +518,8 @@ function equipCats(x) {
 }
 function setLabel(e, i) { const t = e.sets[i].type; if (t === 'w') return 'C'; if (t === 'd') return 'D'; return String(1 + e.sets.slice(0, i).filter(x => !x.type).length); }
 function prevFor(e, i, p) { const w = e.sets[i].type === 'w'; const same = p.filter(x => (x.type === 'w') === w); const idx = e.sets.slice(0, i).filter(x => (x.type === 'w') === w).length; return same[idx]; }
-function exCard(e, prev) {
+function exCard(e, prev) { return inUnit(e.name, () => exCard0(e, prev)); }
+function exCard0(e, prev) {
   const p = prev[key(e.name)] || [], ck = 'xdel:' + e.id, cardio = isCardio(e.name);
   const rows = e.sets.map((s, i) => {
     const pv = prevFor(e, i, p);
@@ -524,7 +532,7 @@ function exCard(e, prev) {
       '<input class="in c" id="rp-' + e.id + '-' + i + '" data-in="reps" data-ex="' + e.id + '" data-set="' + i + '" inputmode="numeric" autocomplete="off" placeholder="reps" aria-label="Repeticiones de la serie ' + (i + 1) + '" value="' + esc(s.reps) + '">' +
       '<button class="chk' + (s.done ? ' on' : '') + '" id="ck-' + e.id + '-' + i + '" data-act="set-done" data-ex="' + e.id + '" data-set="' + i + '" aria-pressed="' + (s.done ? 'true' : 'false') + '" aria-label="Serie ' + (i + 1) + ' hecha">' + ICON_CHECK + '</button></div>';
   }).join('');
-  return '<section class="card"><div class="ex-head"><h3 class="h3">' + esc(e.name) + '</h3>' + (e.target ? '<span class="target">' + esc(e.target) + '</span>' : '') + '</div>' +
+  return '<section class="card"><div class="ex-head"><h3 class="h3">' + esc(e.name) + '</h3>' + (e.target ? '<span class="target">' + esc(e.target) + '</span>' : '') + (cardio ? '' : '<div class="seg" role="group" aria-label="Unidad">' + ['kg', 'lb'].map(u => '<button class="segb" data-act="ex-unit" data-k="' + esc(key(e.name)) + '" data-u="' + u + '" aria-pressed="' + (cu() === u ? 'true' : 'false') + '">' + u + '</button>').join('') + '</div>') + '</div>' +
     dbHint(e.name) + howBlock(e.name) + '<div><div class="sethead"><span>#</span><span>Anterior</span>' + (cardio ? '<span>Min</span><span>Nivel</span>' : '<span>' + U() + '</span><span>Reps</span>') + '<span></span></div>' + rows + '</div>' +
     '<div class="ex-foot">' + (cardio ? '' : '<button class="btn sm" data-act="add-set" data-ex="' + e.id + '">+ Serie</button>') +
     (LIBMAP[key(e.name)] ? '<button class="btn sm" data-act="how-toggle" data-k="' + esc(key(e.name)) + '">' + (S.ui.howOpen[key(e.name)] ? 'Ocultar guía' : 'Cómo se hace') + '</button>' : '') +
@@ -544,21 +552,23 @@ function viewActive() {
     '<div class="row">' + confirmBtns('discard', 'Descartar') + '</div></div>';
   return h + platesCard();
 }
-function platesCard() {
-  return '<section class="card"><h3 class="h3">Discos por lado</h3><div class="row2"><div><label class="lbl" for="pl-total">Peso total (' + U() + ')</label><input class="in" id="pl-total" inputmode="decimal" autocomplete="off" placeholder="' + (S.unit === 'lb' ? 'Ej. 225' : 'Ej. 100') + '" value="' + esc(S.ui.plTotal) + '"></div>' +
+function platesCard() { return inCtx(plU(), platesCard0); }
+function platesOut() { return inCtx(plU(), platesOut0); }
+function platesCard0() {
+  return '<section class="card"><div class="ex-head pl-head"><h3 class="h3" id="pl-title">Discos por lado</h3><div class="seg" role="group" aria-label="Unidad">' + ['kg', 'lb'].map(u => '<button class="segb" data-act="pl-unit" data-u="' + u + '" aria-pressed="' + (plU() === u ? 'true' : 'false') + '">' + u + '</button>').join('') + '</div></div><div class="row2"><div><label class="lbl" for="pl-total">Peso total (' + U() + ')</label><input class="in" id="pl-total" inputmode="decimal" autocomplete="off" placeholder="' + (S.unit === 'lb' ? 'Ej. 225' : 'Ej. 100') + '" value="' + esc(S.ui.plTotal) + '"></div>' +
     '<div><label class="lbl" for="pl-bar">Barra</label><select class="in" id="pl-bar">' + barOpts().map(v => '<option value="' + v + '"' + (curBar() === v ? ' selected' : '') + '>' + v + ' ' + U() + '</option>').join('') + '</select></div></div>' +
     '<div class="pl-out" id="pl-out">' + platesOut() + '</div></section>';
 }
-function platesOut() {
+function platesOut0() {
   const total = num(S.ui.plTotal), bar = Number(curBar());
   if (total == null) return '<p class="muted sm">Escribe el peso total y verás qué discos poner a cada lado.</p>';
   if (total < bar) return '<p class="muted sm">El peso total no puede ser menor que la barra (' + bar + ' ' + U() + ').</p>';
   let side = (total - bar) / 2; const out = [];
-  (S.unit === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]).forEach(p => { const n = Math.floor(side / p + 1e-9); if (n > 0) { out.push({ p, n }); side = Math.round((side - n * p) * 1000) / 1000; } });
+  (plU() === 'lb' ? [45, 35, 25, 10, 5, 2.5] : [25, 20, 15, 10, 5, 2.5, 1.25]).forEach(p => { const n = Math.floor(side / p + 1e-9); if (n > 0) { out.push({ p, n }); side = Math.round((side - n * p) * 1000) / 1000; } });
   if (!out.length) return '<p>Solo la barra.</p>';
-  const cls = S.unit === 'lb' ? { 45: 'p20', 35: 'p15', 25: 'p10', 10: 'p5', 5: 'p2h', 2.5: 'p1q' } : { 25: 'p25', 20: 'p20', 15: 'p15', 10: 'p10', 5: 'p5', 2.5: 'p2h', 1.25: 'p1q' };
+  const cls = plU() === 'lb' ? { 45: 'p20', 35: 'p15', 25: 'p10', 10: 'p5', 5: 'p2h', 2.5: 'p1q' } : { 25: 'p25', 20: 'p20', 15: 'p15', 10: 'p10', 5: 'p5', 2.5: 'p2h', 1.25: 'p1q' };
   let h = '<div class="pl-chips">' + out.map(o => '<span class="pchip ' + cls[o.p] + '">' + o.n + ' × ' + fmtN(o.p) + '</span>').join('') + '</div>';
-  if (side > 0.001) h += '<p class="muted sm">Faltan ' + fmtN(side * 2) + ' ' + U() + ' para llegar exacto con discos de ' + (S.unit === 'lb' ? '2,5 lb' : '1,25 kg') + '.</p>';
+  if (side > 0.001) h += '<p class="muted sm">Faltan ' + fmtN(side * 2) + ' ' + U() + ' para llegar exacto con discos de ' + (plU() === 'lb' ? '2,5 lb' : '1,25 kg') + '.</p>';
   return h;
 }
 function confirmBtns(k, label) {
@@ -598,7 +608,7 @@ function viewHistory() {
     const st = sessionStats(s), open = !!S.ui.open[s.id];
     let d = '<article class="card"><div class="hist-top"><span class="hist-date">' + esc(fmtDay(s.date)) + (s.exercises.some(e => e.pr) ? '<span class="prchip">Récord</span>' : '') + '</span><span class="muted sm">' + esc(s.name) + '</span></div>' +
       '<p class="muted sm tn">' + s.exercises.length + (s.exercises.length === 1 ? ' ejercicio · ' : ' ejercicios · ') + st.sets + (st.sets === 1 ? ' serie' : ' series') + (st.vol > 0 ? ' · ' + fmtInt(toDisp(st.vol)) + ' ' + U() + ' de volumen' : '') + (st.min ? ' · ' + st.min + ' min' : '') + '</p>';
-    if (open) d += '<div class="hist-det">' + s.exercises.map(e => '<div><b>' + esc(e.name) + '</b>' + (e.pr ? '<span class="prchip">Récord</span>' : '') + '<br>' + e.sets.map(x => isCardio(e.name) ? cardioTxt(x) : (x.type === 'w' ? 'C ' : x.type === 'd' ? 'D ' : '') + wN(x.kg) + ' × ' + x.reps).join(' · ') + '</div>').join('') + (s.exercises.some(e => e.sets.some(x => x.type)) ? '<div>C = calentamiento · D = dropset</div>' : '') + '</div>';
+    if (open) d += '<div class="hist-det">' + s.exercises.map(e => '<div><b>' + esc(e.name) + '</b>' + (e.pr ? '<span class="prchip">Récord</span>' : '') + '<br>' + e.sets.map(x => isCardio(e.name) ? cardioTxt(x) : (x.type === 'w' ? 'C ' : x.type === 'd' ? 'D ' : '') + inUnit(e.name, () => wN(x.kg) + ' ' + U()) + ' × ' + x.reps).join(' · ') + '</div>').join('') + (s.exercises.some(e => e.sets.some(x => x.type)) ? '<div>C = calentamiento · D = dropset</div>' : '') + '</div>';
     d += '<div class="row"><button class="btn sm" data-act="hist-toggle" data-id="' + esc(s.id) + '" aria-expanded="' + open + '">' + (open ? 'Ocultar series' : 'Ver series') + '</button><button class="btn sm" data-act="hist-repeat" data-id="' + esc(s.id) + '"' + (S.active ? ' disabled' : '') + '>Repetir</button>' + confirmBtns('hdel:' + s.id, 'Eliminar') + '</div></article>';
     return d;
   }).join('');
@@ -617,7 +627,7 @@ function backupCard() {
 }
 async function saveBackup() {
   if (!DL) return;
-  const data = JSON.stringify({ app: 'bitacora-gym', v: 1, saved: new Date().toISOString(), routines: S.routines, rest: S.restSecs, unit: S.unit, goals: S.goals, months: S.months, active: S.active });
+  const data = JSON.stringify({ app: 'bitacora-gym', v: 1, saved: new Date().toISOString(), routines: S.routines, rest: S.restSecs, unit: S.unit, units: S.units, goals: S.goals, months: S.months, active: S.active });
   try { await DL.save({ filename: 'bitacora-gym-copia-' + todayISO() + '.json', data }); markBackup(); toast('Copia guardada'); renderBanner(); }
   catch (e) { if (!e || e.code !== 'declined') toast('No se pudo guardar la copia'); }
 }
@@ -640,7 +650,7 @@ function applyRestore() {
   const d = r.data;
   Object.keys(S.months).forEach(k => { if (!(k in d.months)) S.months[k] = []; });
   Object.keys(d.months).forEach(k => { S.months[k] = d.months[k]; });
-  S.routines = Array.isArray(d.routines) ? d.routines : []; S.restSecs = d.rest || 90; S.unit = d.unit === 'lb' ? 'lb' : 'kg';
+  S.routines = Array.isArray(d.routines) ? d.routines : []; S.restSecs = d.rest || 90; S.unit = d.unit === 'lb' ? 'lb' : 'kg'; S.units = d.units && typeof d.units === 'object' ? d.units : {};
   S.goals = d.goals && typeof d.goals === 'object' ? d.goals : {}; S.active = d.active || null; S.rest = null; S.ui.restore = null;
   queue('routines'); queue('goals'); queue('active');
   Object.keys(S.months).forEach(k => queue('m_' + k));
@@ -681,6 +691,9 @@ function viewProgress() {
   const ks = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   if (!ks.length) return h;
   let cur = S.ui.progEx && counts[key(S.ui.progEx)] ? key(S.ui.progEx) : ks[0];
+  return inUnit(names[cur], () => progressTail(h, names, ks, cur));
+}
+function progressTail(h, names, ks, cur) {
   const hist = exerciseHistory(names[cur]);
   h += '<div class="card"><div><label class="lbl" for="exsel">Ejercicio</label><select class="in" id="exsel">' + ks.map(k => '<option value="' + esc(names[k]) + '"' + (k === cur ? ' selected' : '') + '>' + esc(names[k]) + '</option>').join('') + '</select></div>';
   let pr = hist[0];
@@ -708,7 +721,7 @@ function dbHint(name) {
   const c = equipCats(x);
   return (c.indexOf('Mancuernas') >= 0 && c.indexOf('Barra') < 0 && c.indexOf('Polea') < 0 && c.indexOf('Máquina') < 0) ? '<p class="muted sm">Escribe el peso de cada mancuerna, no la suma de las dos.</p>' : '';
 }
-function barOpts() { return S.unit === 'lb' ? ['45', '35', '25'] : ['20', '15', '10']; }
+function barOpts() { return plU() === 'lb' ? ['45', '35', '25'] : ['20', '15', '10']; }
 function curBar() { const o = barOpts(); return o.indexOf(S.ui.plBar) >= 0 ? S.ui.plBar : o[0]; }
 function markRecords(exs) {
   const out = [];
@@ -783,7 +796,7 @@ function recordsCard(names, ks) {
     return { n: names[k], kg: b.top.kg, reps: b.top.reps, date: b.date };
   }).filter(Boolean).sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0).slice(0, 10);
   if (!rows.length) return '';
-  return '<div class="card"><h3 class="h3">Récords personales</h3><p class="muted sm">El mayor peso que has levantado en cada ejercicio, sin contar calentamientos.</p><table class="tbl"><thead><tr><th>Ejercicio</th><th>Mejor serie</th><th>Fecha</th></tr></thead><tbody>' + rows.map(r => '<tr><td>' + esc(r.n) + '</td><td>' + wN(r.kg) + ' × ' + r.reps + '</td><td>' + esc(fmtDay(r.date, { day: 'numeric', month: 'short' })) + '</td></tr>').join('') + '</tbody></table></div>';
+  return '<div class="card"><h3 class="h3">Récords personales</h3><p class="muted sm">El mayor peso que has levantado en cada ejercicio, sin contar calentamientos.</p><table class="tbl"><thead><tr><th>Ejercicio</th><th>Mejor serie</th><th>Fecha</th></tr></thead><tbody>' + rows.map(r => '<tr><td>' + esc(r.n) + '</td><td>' + inUnit(r.n, () => wN(r.kg) + ' ' + U()) + ' × ' + r.reps + '</td><td>' + esc(fmtDay(r.date, { day: 'numeric', month: 'short' })) + '</td></tr>').join('') + '</tbody></table></div>';
 }
 function howHTML(x) { return '<ol class="how">' + x[3].map(s => '<li>' + esc(s) + '</li>').join('') + '</ol><p class="how-tip">' + esc(x[4]) + '</p>'; }
 function howBlock(name) { const x = LIBMAP[key(name)]; if (!x || !S.ui.howOpen[key(name)]) return ''; return '<div class="stack">' + howHTML(x) + '</div>'; }
@@ -810,7 +823,6 @@ function render() {
   h += '<datalist id="exlist">' + knownNames().map(n => '<option value="' + esc(n) + '"></option>').join('') + '</datalist>';
   $('#main').innerHTML = h;
   document.querySelectorAll('.tab').forEach(b => { if (b.dataset.tab === S.tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  document.querySelectorAll('.segb').forEach(b => b.setAttribute('aria-pressed', b.dataset.u === S.unit ? 'true' : 'false'));
   renderBanner(); window.scrollTo(0, y); tick();
 }
 function renderBanner() {
@@ -901,7 +913,8 @@ document.addEventListener('click', ev => {
   }
   else if (a === 'finish') finishSession();
   else if (a === 'finish-fill') finishSession('fill');
-  else if (a === 'unit') { if (d.u !== S.unit) { S.unit = d.u === 'lb' ? 'lb' : 'kg'; S.ui.plTotal = ''; queue('routines'); render(); } }
+  else if (a === 'ex-unit') { S.units = S.units || {}; S.units[d.k] = d.u === 'lb' ? 'lb' : 'kg'; queue('routines'); render(); }
+  else if (a === 'pl-unit') { S.ui.plU = d.u === 'lb' ? 'lb' : 'kg'; S.ui.plBar = ''; S.ui.plTotal = ''; render(); }
   else if (a === 'lib-equip') { S.ui.libE = d.e; render(); }
   else if (a === 'quick-equip') { S.ui.quickE = d.e; render(); }
   else if (a === 'rest-add') { if (S.rest) { S.rest.end += 30000; S.rest.buzzed = false; tick(); } }
@@ -941,7 +954,7 @@ document.addEventListener('input', ev => {
   const t = ev.target, k = t.dataset && t.dataset.in;
   if (k === 'kg' || k === 'reps' || k === 'lvl') {
     const e = exById(t.dataset.ex);
-    if (e) { const st = e.sets[+t.dataset.set]; if (k === 'kg') { const v = num(t.value); st.kg = v == null ? '' : String(Math.round(fromDisp(v) * 10000) / 10000); } else if (k === 'lvl') st.lvl = t.value; else st.reps = t.value; queue('active'); }
+    if (e) { const st = e.sets[+t.dataset.set]; if (k === 'kg') { const v = num(t.value); st.kg = v == null ? '' : String(Math.round(inUnit(e.name, () => fromDisp(v)) * 10000) / 10000); } else if (k === 'lvl') st.lvl = t.value; else st.reps = t.value; queue('active'); }
   }
   else if (k === 'rname' && S.ui.draft) S.ui.draft.name = t.value;
   else if (k === 'rex-name' && S.ui.draft) S.ui.draft.exercises[+t.dataset.i].name = t.value;
@@ -955,7 +968,7 @@ document.addEventListener('change', ev => {
   if (t.id === 'pl-bar') { S.ui.plBar = t.value; $('#pl-out').innerHTML = platesOut(); }
   else if (t.id === 'exsel') { S.ui.progEx = t.value; render(); }
   else if (t.id === 'restore-file') { const f = t.files && t.files[0]; if (f) readBackup(f); t.value = ''; }
-  else if (t.id === 'goal-kg') { const v = num(t.value), k = key(t.dataset.name); if (v && v > 0) S.goals[k] = { name: t.dataset.name, kg: fromDisp(v) }; else delete S.goals[k]; queue('goals'); render(); }
+  else if (t.id === 'goal-kg') { const v = num(t.value), k = key(t.dataset.name); if (v && v > 0) S.goals[k] = { name: t.dataset.name, kg: inUnit(t.dataset.name, () => fromDisp(v)) }; else delete S.goals[k]; queue('goals'); render(); }
 });
 document.addEventListener('keydown', ev => { if (ev.key === 'Enter' && ev.target.id === 'newex') { ev.preventDefault(); const b = $('#addex-btn'); if (b) b.click(); } });
 
