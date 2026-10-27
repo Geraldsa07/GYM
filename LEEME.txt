@@ -1,0 +1,23 @@
+BITÁCORA DE GYM (versión independiente)
+
+Esta carpeta es la misma app, pero no depende de Claude. Los datos se guardan en tu teléfono.
+
+1. Ponerla en internet gratis (GitHub Pages)
+- Entra a github.com y crea una cuenta si no tienes.
+- Crea un repositorio nuevo, público, con el nombre que quieras (por ejemplo gym).
+- Pulsa "uploading an existing file" y sube todos los archivos de esta carpeta (index.html, manifest.webmanifest, sw.js y las tres imágenes png).
+- Ve a Settings > Pages. En Source elige "Deploy from a branch", rama main, carpeta /(root), y guarda.
+- Espera uno o dos minutos. La dirección queda así: https://TU-USUARIO.github.io/gym/
+
+2. Agregarla a la pantalla de inicio
+- iPhone: abre la dirección en Safari, toca Compartir y luego "Agregar a pantalla de inicio".
+- Android: abre la dirección en Chrome, menú de los tres puntos y "Instalar app" o "Agregar a pantalla de inicio".
+
+3. Pasar tus datos actuales
+- En la bitácora de Claude: pestaña Historial, botón "Guardar copia". Se descarga un archivo .json.
+- Abre la app nueva desde el ícono de la pantalla de inicio (no desde Safari) y en Historial toca "Restaurar copia". Elige ese archivo.
+- En iPhone, Safari y la app de la pantalla de inicio guardan los datos por separado. Por eso hay que restaurar dentro de la app ya instalada.
+
+4. Copias de seguridad
+- Todo queda solo en tu teléfono. Si borras los datos del navegador o desinstalas la app, se pierde.
+- Haz una copia con "Guardar copia" de vez en cuando y guárdala en tus archivos o en tu correo. La app te lo recuerda cada 14 días.
